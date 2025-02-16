@@ -2,41 +2,42 @@ use crate::ir::ast::{EnvValue, Expression};
 use crate::ir::ast::Environment; 
 use std::collections::HashMap;
 
-pub fn sqrt(args: Vec<EnvValue>) -> EnvValue {
+pub fn sqrt(args: Vec<EnvValue>) -> Result<EnvValue, String> {
     if args.len() != 1 {
-        panic!("sqrt expects exactly one argument");
+        return Err("sqrt expects exactly one argument".to_string());
     }
 
     if let EnvValue::Exp(Expression::CReal(x)) = &args[0] {
-        EnvValue::Exp(Expression::CReal(x.sqrt()))
+        Ok(EnvValue::Exp(Expression::CReal(x.sqrt())))
     } else {
-        panic!("sqrt expects a real number argument");
+        Err("sqrt expects a real number argument".to_string())
     }
 }
 
-pub fn factorial(args: Vec<EnvValue>) -> EnvValue {
+pub fn factorial(args: Vec<EnvValue>) -> Result<EnvValue, String> {
     if args.len() != 1 {
-        panic!("factorial expects exactly one argument");
+        return Err("factorial expects exactly one argument".to_string());
     }
+
     if let EnvValue::Exp(Expression::CInt(n)) = &args[0] {
         if *n < 0 {
-            panic!("factorial expects a non-negative integer argument");
+            return Err("factorial expects a non-negative integer argument".to_string());
         }
         let mut prod: i32 = 1;
         for i in 1..=*n {
             prod *= i;
         }
-        EnvValue::Exp(Expression::CInt(prod))
+        Ok(EnvValue::Exp(Expression::CInt(prod)))
     } else {
-        panic!("factorial expects a integer argument");
+        Err("factorial expects an integer argument".to_string())
     }
 }
 
-
-pub fn gcd(args: Vec<EnvValue>) -> EnvValue {
+pub fn gcd(args: Vec<EnvValue>) -> Result<EnvValue, String> {
     if args.len() != 2 {
-        panic!("gcd expects exactly two arguments");
+        return Err("gcd expects exactly two arguments".to_string());
     }
+
     if let (EnvValue::Exp(Expression::CInt(a)), EnvValue::Exp(Expression::CInt(b))) =
         (&args[0], &args[1])
     {
@@ -47,385 +48,619 @@ pub fn gcd(args: Vec<EnvValue>) -> EnvValue {
             b = a % b;
             a = t;
         }
-        EnvValue::Exp(Expression::CInt(a.abs()))
+        Ok(EnvValue::Exp(Expression::CInt(a.abs())))
     } else {
-        panic!("gcd expects two integer arguments");
+        Err("gcd expects two integer arguments".to_string())
     }
 }
 
-pub fn lcm(args: Vec<EnvValue>) -> EnvValue {
+
+pub fn lcm(args: Vec<EnvValue>) -> Result<EnvValue, String> {
     if args.len() != 2 {
-        panic!("lcm expects exactly two arguments");
+        return Err("lcm expects exactly two arguments".to_string());
     }
+
     if let (EnvValue::Exp(Expression::CInt(a)), EnvValue::Exp(Expression::CInt(b))) =
         (&args[0], &args[1])
     {
         let gcd_val = match gcd(args.clone()) {
-            EnvValue::Exp(Expression::CInt(val)) => val,
-            _ => panic!("Error calculating gcd"),
+            Ok(EnvValue::Exp(Expression::CInt(val))) => val,
+            Err(err) => return Err(format!("Error calculating gcd: {}", err)),
+            _ => return Err("Unexpected error in gcd calculation".to_string()),
         };
-        
+
         let lcm_val = (a * b).abs() / gcd_val;
-        EnvValue::Exp(Expression::CInt(lcm_val))
+        Ok(EnvValue::Exp(Expression::CInt(lcm_val)))
     } else {
-        panic!("lcm expects two integer arguments");
+        Err("lcm expects two integer arguments".to_string())
     }
 }
 
-pub fn comb(args: Vec<EnvValue>) -> EnvValue {
+pub fn comb(args: Vec<EnvValue>) -> Result<EnvValue, String> {
     if args.len() != 2 {
-        panic!("comb expects exactly two arguments");
+        return Err("comb expects exactly two arguments".to_string());
     }
+
     if let (EnvValue::Exp(Expression::CInt(n)), EnvValue::Exp(Expression::CInt(k))) = (&args[0], &args[1]) {
         if *n < 0 || *k < 0 {
-            panic!("comb expects non-negative integers");
+            return Err("comb expects non-negative integers".to_string());
         }
         let n = *n;
         let mut k = *k;
         if k > n {
-            return EnvValue::Exp(Expression::CInt(0));
+            return Ok(EnvValue::Exp(Expression::CInt(0)));
         }
         if k > n - k {
             k = n - k;
         }
         let result = (0..k).fold(1, |acc, i| acc * (n - i) / (i + 1));
-        EnvValue::Exp(Expression::CInt(result))
+        Ok(EnvValue::Exp(Expression::CInt(result)))
     } else {
-        panic!("comb expects two integer arguments");
+        Err("comb expects two integer arguments".to_string())
     }
 }
 
-pub fn perm(args: Vec<EnvValue>) -> EnvValue {
+pub fn perm(args: Vec<EnvValue>) -> Result<EnvValue, String> {
     if args.len() != 2 {
-        panic!("perm expects exactly two arguments");
+        return Err("perm expects exactly two arguments".to_string());
     }
+
     if let (EnvValue::Exp(Expression::CInt(n)), EnvValue::Exp(Expression::CInt(k))) = (&args[0], &args[1]) {
         if *n < 0 || *k < 0 {
-            panic!("perm expects non-negative integers");
+            return Err("perm expects non-negative integers".to_string());
         }
         let n = *n;
         let k = *k;
         if k > n {
-            return EnvValue::Exp(Expression::CInt(0));
+            return Ok(EnvValue::Exp(Expression::CInt(0)));
         }
         let mut result: i32 = 1;
         for i in 0..k {
             result *= n - i;
         }
-        EnvValue::Exp(Expression::CInt(result))
+        Ok(EnvValue::Exp(Expression::CInt(result)))
     } else {
-        panic!("perm expects two integer arguments");
+        Err("perm expects two integer arguments".to_string())
     }
+}
+
+//AINDA EH NECESSÁRIO APLICAR CONVERSAO
+pub fn euclidean_distance(p: &[f64], q: &[f64]) -> Result<f64, String> {
+    if p.len() != q.len() {
+        return Err("Os pontos devem ter a mesma dimensão.".to_string());
+    }
+
+    let mut sum_of_squares = 0.0;
+    for i in 0..p.len() {
+        let diff = p[i] - q[i];
+        sum_of_squares += diff * diff;
+    }
+
+    Ok(sum_of_squares.sqrt())
+}
+
+pub fn is_prime(n: u64) -> bool {
+   //Casos base: 
+   //1 - Se n <= 1, não eh primo
+   //2 - 2 e 3 são primos
+   //3 - se n eh divisivel por 2 ou 3, nao eh primo
+   
+    if n <= 1 {
+        return false;
+    }
+    if n <= 3 {
+        return true;
+    }
+    if n % 2 == 0 || n % 3 == 0 {
+        return false;
+    }
+
+    let mut i = 5;
+    while i * i <= n {
+        if n % i == 0 || n % (i + 2) == 0 {
+            return false;
+        }
+        i += 6;
+    }
+
+    true
+}
+
+pub fn log(base: f64, x: f64) -> f64 {
+    x.log(base)
+}
+
+pub fn sum_of_products(p: &[f64], q: &[f64]) -> Result<f64, String> {
+    if p.len() != q.len() {
+        return Err("Os iteráveis devem ter o mesmo comprimento.".to_string());
+    }
+
+    let mut sum = 0.0;
+    for i in 0..p.len() {
+        sum += p[i] * q[i];
+    }
+
+    Ok(sum)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+//TESTES FUNCAO SQRT
     #[test]
     fn test_sqrt_positive_real() {
         let result = sqrt(vec![EnvValue::Exp(Expression::CReal(9.0))]);
-        match result {
-            EnvValue::Exp(Expression::CReal(res_value)) => assert_eq!(res_value, 3.0),
-            _ => panic!("Incorrect result for sqrt of 9.0"),
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CReal(res_value))) = result {
+            assert_eq!(res_value, 3.0);
         }
-        
+
         let result = sqrt(vec![EnvValue::Exp(Expression::CReal(49.0))]);
-        match result {
-            EnvValue::Exp(Expression::CReal(res_value)) => assert_eq!(res_value, 7.0),
-            _ => panic!("Incorrect result for sqrt of 49.0"),
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CReal(res_value))) = result {
+            assert_eq!(res_value, 7.0);
         }
 
         let result = sqrt(vec![EnvValue::Exp(Expression::CReal(121.0))]);
-        match result {
-            EnvValue::Exp(Expression::CReal(res_value)) => assert_eq!(res_value, 11.0),
-            _ => panic!("Incorrect result for sqrt of 121.0"),
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CReal(res_value))) = result {
+            assert_eq!(res_value, 11.0);
         }
     }
 
-    
-    
-    
     #[test]
     fn test_sqrt_zero() {
         let result = sqrt(vec![EnvValue::Exp(Expression::CReal(0.0))]);
-        match result {
-            EnvValue::Exp(Expression::CReal(res_value)) => assert_eq!(res_value, 0.0),
-            _ => panic!("Incorrect result for sqrt of 0.0"),
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CReal(res_value))) = result {
+            assert_eq!(res_value, 0.0);
         }
     }
 
     #[test]
-    #[should_panic(expected = "sqrt expects exactly one argument")]
     fn test_sqrt_invalid_number_of_arguments() {
-        sqrt(vec![]);
+        let result = sqrt(vec![]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "sqrt expects exactly one argument");
     }
 
     #[test]
-    #[should_panic(expected = "sqrt expects exactly one argument")]
     fn test_sqrt_invalid_number_of_arguments_multiple() {
-        sqrt(vec![
+        let result = sqrt(vec![
             EnvValue::Exp(Expression::CReal(25.0)),
             EnvValue::Exp(Expression::CReal(9.0)),
         ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "sqrt expects exactly one argument");
     }
 
     #[test]
-    #[should_panic(expected = "sqrt expects a real number argument")]
     fn test_sqrt_invalid_argument_type() {
-        sqrt(vec![EnvValue::Exp(Expression::CInt(25))]);
+        let result = sqrt(vec![EnvValue::Exp(Expression::CInt(25))]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "sqrt expects a real number argument");
     }
-    
-//====================================================================================================
+//TESTES FUNCAO FACTORIAL
     #[test]
     fn test_factorial_valid_inputs() {
         let result = factorial(vec![EnvValue::Exp(Expression::CInt(0))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 1),
-            _ => panic!("Incorrect result for factorial of 0"),
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 1);
         }
-        
+
         let result = factorial(vec![EnvValue::Exp(Expression::CInt(1))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 1),
-            _ => panic!("Incorrect result for factorial of 1"),
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 1);
         }
-        
+
         let result = factorial(vec![EnvValue::Exp(Expression::CInt(5))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 120),
-            _ => panic!("Incorrect result for factorial of 5"),
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 120);
         }
-        
+
         let result = factorial(vec![EnvValue::Exp(Expression::CInt(10))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 3628800),
-            _ => panic!("Incorrect result for factorial of 10"),
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 3628800);
         }
     }
 
     #[test]
-    #[should_panic(expected = "factorial expects exactly one argument")]
     fn test_factorial_invalid_number_of_arguments() {
-        factorial(vec![]);
+        let result = factorial(vec![]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "factorial expects exactly one argument");
     }
 
     #[test]
-    #[should_panic(expected = "factorial expects exactly one argument")]
     fn test_factorial_invalid_number_of_arguments_multiple() {
-        factorial(vec![EnvValue::Exp(Expression::CInt(1)), EnvValue::Exp(Expression::CInt(2))]);
+        let result = factorial(vec![
+            EnvValue::Exp(Expression::CInt(1)),
+            EnvValue::Exp(Expression::CInt(2)),
+        ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "factorial expects exactly one argument");
     }
 
     #[test]
-    #[should_panic(expected = "factorial expects a integer argument")]
     fn test_factorial_invalid_argument_type() {
-        factorial(vec![EnvValue::Exp(Expression::CReal(3.5))]);
+        let result = factorial(vec![EnvValue::Exp(Expression::CReal(3.5))]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "factorial expects an integer argument");
     }
 
     #[test]
-    #[should_panic(expected = "factorial expects a non-negative integer argument")]
     fn test_factorial_negative_argument() {
-        factorial(vec![EnvValue::Exp(Expression::CInt(-1))]);
+        let result = factorial(vec![EnvValue::Exp(Expression::CInt(-1))]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "factorial expects a non-negative integer argument");
     }
-
-//====================================================================================================
+//TESTES FUNCAO GCD
     #[test]
     fn test_gcd_valid_inputs() {
-        let result = gcd(vec![EnvValue::Exp(Expression::CInt(48)), EnvValue::Exp(Expression::CInt(18))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 6),
-            _ => panic!("Incorrect result for gcd of 48 and 18"),
+        let result = gcd(vec![
+            EnvValue::Exp(Expression::CInt(48)),
+            EnvValue::Exp(Expression::CInt(18)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 6);
         }
 
-        let result = gcd(vec![EnvValue::Exp(Expression::CInt(7)), EnvValue::Exp(Expression::CInt(3))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 1),
-            _ => panic!("Incorrect result for gcd of 7 and 3"),
+        let result = gcd(vec![
+            EnvValue::Exp(Expression::CInt(7)),
+            EnvValue::Exp(Expression::CInt(3)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 1);
         }
 
-        let result = gcd(vec![EnvValue::Exp(Expression::CInt(-48)), EnvValue::Exp(Expression::CInt(18))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 6),
-            _ => panic!("Incorrect result for gcd of -48 and 18"),
+        let result = gcd(vec![
+            EnvValue::Exp(Expression::CInt(-48)),
+            EnvValue::Exp(Expression::CInt(18)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 6);
         }
 
-        let result = gcd(vec![EnvValue::Exp(Expression::CInt(0)), EnvValue::Exp(Expression::CInt(18))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 18),
-            _ => panic!("Incorrect result for gcd of 0 and 18"),
+        let result = gcd(vec![
+            EnvValue::Exp(Expression::CInt(0)),
+            EnvValue::Exp(Expression::CInt(18)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 18);
         }
     }
 
     #[test]
-    #[should_panic(expected = "gcd expects exactly two arguments")]
     fn test_gcd_invalid_number_of_arguments() {
-        gcd(vec![EnvValue::Exp(Expression::CInt(48))]);
+        let result = gcd(vec![EnvValue::Exp(Expression::CInt(48))]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "gcd expects exactly two arguments");
     }
 
     #[test]
-    #[should_panic(expected = "gcd expects exactly two arguments")]
     fn test_gcd_invalid_number_of_arguments_multiple() {
-        gcd(vec![
+        let result = gcd(vec![
             EnvValue::Exp(Expression::CInt(48)),
             EnvValue::Exp(Expression::CInt(18)),
             EnvValue::Exp(Expression::CInt(6)),
         ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "gcd expects exactly two arguments");
     }
 
     #[test]
-    #[should_panic(expected = "gcd expects two integer arguments")]
     fn test_gcd_invalid_argument_type() {
-        gcd(vec![EnvValue::Exp(Expression::CReal(48.0)), EnvValue::Exp(Expression::CInt(18))]);
+        let result = gcd(vec![
+            EnvValue::Exp(Expression::CReal(48.0)),
+            EnvValue::Exp(Expression::CInt(18)),
+        ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "gcd expects two integer arguments");
     }
-
-//====================================================================================================
+//TESTES PARA LCM
     #[test]
     fn test_lcm_valid_inputs() {
-        let result = lcm(vec![EnvValue::Exp(Expression::CInt(48)), EnvValue::Exp(Expression::CInt(18))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 144),
-            _ => panic!("Incorrect result for lcm of 48 and 18"),
+        let result = lcm(vec![
+            EnvValue::Exp(Expression::CInt(48)),
+            EnvValue::Exp(Expression::CInt(18)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 144);
         }
 
-        let result = lcm(vec![EnvValue::Exp(Expression::CInt(7)), EnvValue::Exp(Expression::CInt(3))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 21),
-            _ => panic!("Incorrect result for lcm of 7 and 3"),
+        let result = lcm(vec![
+            EnvValue::Exp(Expression::CInt(7)),
+            EnvValue::Exp(Expression::CInt(3)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 21);
         }
 
-        let result = lcm(vec![EnvValue::Exp(Expression::CInt(-48)), EnvValue::Exp(Expression::CInt(18))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 144),
-            _ => panic!("Incorrect result for lcm of -48 and 18"),
+        let result = lcm(vec![
+            EnvValue::Exp(Expression::CInt(-48)),
+            EnvValue::Exp(Expression::CInt(18)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 144);
         }
 
-        let result = lcm(vec![EnvValue::Exp(Expression::CInt(0)), EnvValue::Exp(Expression::CInt(18))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 0),
-            _ => panic!("Incorrect result for lcm of 0 and 18"),
+        let result = lcm(vec![
+            EnvValue::Exp(Expression::CInt(0)),
+            EnvValue::Exp(Expression::CInt(18)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 0);
         }
     }
 
     #[test]
-    #[should_panic(expected = "lcm expects exactly two arguments")]
     fn test_lcm_invalid_number_of_arguments() {
-        lcm(vec![EnvValue::Exp(Expression::CInt(48))]);
+        let result = lcm(vec![EnvValue::Exp(Expression::CInt(48))]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "lcm expects exactly two arguments");
     }
 
     #[test]
-    #[should_panic(expected = "lcm expects exactly two arguments")]
     fn test_lcm_invalid_number_of_arguments_multiple() {
-        lcm(vec![
+        let result = lcm(vec![
             EnvValue::Exp(Expression::CInt(48)),
             EnvValue::Exp(Expression::CInt(18)),
             EnvValue::Exp(Expression::CInt(6)),
         ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "lcm expects exactly two arguments");
     }
 
     #[test]
-    #[should_panic(expected = "lcm expects two integer arguments")]
     fn test_lcm_invalid_argument_type() {
-        lcm(vec![EnvValue::Exp(Expression::CReal(48.0)), EnvValue::Exp(Expression::CInt(18))]);
-
+        let result = lcm(vec![
+            EnvValue::Exp(Expression::CReal(48.0)),
+            EnvValue::Exp(Expression::CInt(18)),
+        ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "lcm expects two integer arguments");
     }
 
-//====================================================================================================
+//TESTES PARA COMB
     #[test]
     fn test_comb_valid_inputs() {
-        let result = comb(vec![EnvValue::Exp(Expression::CInt(5)), EnvValue::Exp(Expression::CInt(2))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 10),
-            _ => panic!("Incorrect result for comb(5, 2)"),
+        let result = comb(vec![
+            EnvValue::Exp(Expression::CInt(5)),
+            EnvValue::Exp(Expression::CInt(2)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 10);
         }
 
-        let result = comb(vec![EnvValue::Exp(Expression::CInt(10)), EnvValue::Exp(Expression::CInt(3))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 120),
-            _ => panic!("Incorrect result for comb(10, 3)"),
+        let result = comb(vec![
+            EnvValue::Exp(Expression::CInt(10)),
+            EnvValue::Exp(Expression::CInt(3)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 120);
         }
 
-        let result = comb(vec![EnvValue::Exp(Expression::CInt(5)), EnvValue::Exp(Expression::CInt(6))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 0),
-            _ => panic!("Incorrect result for comb(5, 6)"),
+        let result = comb(vec![
+            EnvValue::Exp(Expression::CInt(5)),
+            EnvValue::Exp(Expression::CInt(6)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 0);
         }
     }
 
     #[test]
-    #[should_panic(expected = "comb expects exactly two arguments")]
     fn test_comb_invalid_number_of_arguments() {
-        comb(vec![EnvValue::Exp(Expression::CInt(5))]);
+        let result = comb(vec![EnvValue::Exp(Expression::CInt(5))]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "comb expects exactly two arguments");
     }
 
     #[test]
-    #[should_panic(expected = "comb expects exactly two arguments")]
     fn test_comb_invalid_number_of_arguments_multiple() {
-        comb(vec![
+        let result = comb(vec![
             EnvValue::Exp(Expression::CInt(5)),
             EnvValue::Exp(Expression::CInt(2)),
             EnvValue::Exp(Expression::CInt(1)),
         ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "comb expects exactly two arguments");
     }
 
     #[test]
-    #[should_panic(expected = "comb expects two integer arguments")]
     fn test_comb_invalid_argument_type() {
-        comb(vec![EnvValue::Exp(Expression::CReal(5.0)), EnvValue::Exp(Expression::CInt(2))]);
+        let result = comb(vec![
+            EnvValue::Exp(Expression::CReal(5.0)),
+            EnvValue::Exp(Expression::CInt(2)),
+        ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "comb expects two integer arguments");
     }
 
     #[test]
-    #[should_panic(expected = "comb expects non-negative integers")]
     fn test_comb_negative_arguments() {
-        comb(vec![EnvValue::Exp(Expression::CInt(5)), EnvValue::Exp(Expression::CInt(-2))]);
+        let result = comb(vec![
+            EnvValue::Exp(Expression::CInt(5)),
+            EnvValue::Exp(Expression::CInt(-2)),
+        ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "comb expects non-negative integers");
     }
 
-//====================================================================================================
+//TESTES PARA PERM
     #[test]
     fn test_perm_valid_inputs() {
-        let result = perm(vec![EnvValue::Exp(Expression::CInt(5)), EnvValue::Exp(Expression::CInt(2))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 20),
-            _ => panic!("Incorrect result for perm(5, 2)"),
+        let result = perm(vec![
+            EnvValue::Exp(Expression::CInt(5)),
+            EnvValue::Exp(Expression::CInt(2)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 20);
         }
 
-        let result = perm(vec![EnvValue::Exp(Expression::CInt(10)), EnvValue::Exp(Expression::CInt(3))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 720),
-            _ => panic!("Incorrect result for perm(10, 3)"),
+        let result = perm(vec![
+            EnvValue::Exp(Expression::CInt(10)),
+            EnvValue::Exp(Expression::CInt(3)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 720);
         }
 
-        let result = perm(vec![EnvValue::Exp(Expression::CInt(5)), EnvValue::Exp(Expression::CInt(6))]);
-        match result {
-            EnvValue::Exp(Expression::CInt(value)) => assert_eq!(value, 0),
-            _ => panic!("Incorrect result for perm(5, 6)"),
+        let result = perm(vec![
+            EnvValue::Exp(Expression::CInt(5)),
+            EnvValue::Exp(Expression::CInt(6)),
+        ]);
+        assert!(result.is_ok());
+        if let Ok(EnvValue::Exp(Expression::CInt(value))) = result {
+            assert_eq!(value, 0);
         }
     }
 
     #[test]
-    #[should_panic(expected = "perm expects exactly two arguments")]
     fn test_perm_invalid_number_of_arguments() {
-        perm(vec![EnvValue::Exp(Expression::CInt(5))]);
+        let result = perm(vec![EnvValue::Exp(Expression::CInt(5))]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "perm expects exactly two arguments");
     }
 
     #[test]
-    #[should_panic(expected = "perm expects exactly two arguments")]
     fn test_perm_invalid_number_of_arguments_multiple() {
-        perm(vec![
+        let result = perm(vec![
             EnvValue::Exp(Expression::CInt(5)),
             EnvValue::Exp(Expression::CInt(2)),
             EnvValue::Exp(Expression::CInt(1)),
         ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "perm expects exactly two arguments");
     }
 
     #[test]
-    #[should_panic(expected = "perm expects two integer arguments")]
     fn test_perm_invalid_argument_type() {
-        perm(vec![EnvValue::Exp(Expression::CReal(5.0)), EnvValue::Exp(Expression::CInt(2))]);
+        let result = perm(vec![
+            EnvValue::Exp(Expression::CReal(5.0)),
+            EnvValue::Exp(Expression::CInt(2)),
+        ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "perm expects two integer arguments");
     }
 
     #[test]
-    #[should_panic(expected = "perm expects non-negative integers")]
     fn test_perm_negative_arguments() {
-        perm(vec![EnvValue::Exp(Expression::CInt(5)), EnvValue::Exp(Expression::CInt(-2))]);
+        let result = perm(vec![
+            EnvValue::Exp(Expression::CInt(5)),
+            EnvValue::Exp(Expression::CInt(-2)),
+        ]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "perm expects non-negative integers");
     }
+
+//AINDA EH NECESSARIO ADAPTAR
+//TESTES FUNCAO EUCLIDES
+    #[test]
+    fn test_euclidean_distance() {
+        let p = vec![1.0, 2.0, 3.0];
+        let q = vec![4.0, 5.0, 6.0];
+        let result = euclidean_distance(&p, &q);
+        assert!(result.is_ok()); 
+        assert!((result.unwrap() - 5.196152422706632).abs() < 1e-10);
+
+        let p = vec![0.0, 0.0];
+        let q = vec![3.0, 4.0];
+        let result = euclidean_distance(&p, &q);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 5.0);
+}
+    #[test]
+    fn test_euclidean_distance_different_dimensions() {
+        let p = vec![1.0, 2.0];
+        let q = vec![1.0, 2.0, 3.0];
+        let result = euclidean_distance(&p, &q);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Os pontos devem ter a mesma dimensão.");
+}
+//TESTES PARA FUNCAO IS PRIME
+    #[test]
+    fn test_is_prime_small_numbers() {
+        assert!(!is_prime(0));
+        assert!(!is_prime(1));
+        assert!(is_prime(2));
+        assert!(is_prime(3));
+        assert!(!is_prime(4));
+        assert!(is_prime(5));
+        assert!(!is_prime(6)); 
+        assert!(is_prime(7));  
+        assert!(!is_prime(8)); 
+        assert!(!is_prime(9)); 
+        assert!(!is_prime(10)); 
+
+    }
+
+    #[test]
+    fn test_is_prime_medium_numbers() {
+        assert!(!is_prime(15));
+        assert!(!is_prime(25));
+        assert!(is_prime(29));
+        assert!(!is_prime(49));
+        assert!(is_prime(53));
+    }
+//TESTES PARA FUNCAO LOG
+    #[test]
+    fn test_log_valid_inputs() {
+        assert!((log(2.0, 8.0) - 3.0).abs() < 1e-10);
+        assert!((log(10.0, 100.0) - 2.0).abs() < 1e-10);
+        assert!((log(3.0, 9.0) - 2.0).abs() < 1e-10);
+        assert!((log(5.0, 1.0) - 0.0).abs() < 1e-10); 
+    }
+
+    #[test]
+    fn test_log_invalid_inputs() {
+        assert!(log(2.0, 0.0).is_nan());
+        assert!(log(2.0, -1.0).is_nan());
+        assert!(log(0.0, 10.0).is_nan());
+        assert!(log(-1.0, 10.0).is_nan());
+        assert!(log(1.0, 10.0).is_nan());
+    }
+//TESTES PARA FUNCAO SOMA DE PRODUTOS
+    #[test]
+    fn test_sum_of_products() {
+        let p = vec![1.0, 2.0, 3.0];
+        let q = vec![4.0, 5.0, 6.0];
+        let result = sum_of_products(&p, &q);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 32.0);
+    
+        let p = vec![0.0, 1.0, 2.0];
+        let q = vec![3.0, 4.0, 5.0];
+        let result = sum_of_products(&p, &q);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 14.0);
+    }
+
+    #[test]
+    fn test_sum_of_products_different_lengths() {
+        let p = vec![1.0, 2.0];
+        let q = vec![1.0, 2.0, 3.0];
+        let result = sum_of_products(&p, &q);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Os iteráveis devem ter o mesmo comprimento.");
+    }
+
 } 
